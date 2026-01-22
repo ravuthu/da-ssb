@@ -1,4 +1,4 @@
-name: Sync aem.js from Source
+name: Sync from AEM Boilerplate
 
 on:
   schedule:
@@ -6,8 +6,16 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch: # Allow manual trigger
 
+# ============================================
+# CONFIGURATION: Add files to sync here
+# Format: "local/path:remote/path" (one per line)
+# ============================================
+env:
+  SYNC_FILES: |
+    scripts/aem.js:scripts/aem.js
+
 jobs:
-  sync-aem-js:
+  sync-aem-boilerplate:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -17,41 +25,61 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Download latest aem.js from source
+      - name: Download files from AEM Boilerplate
         run: |
-          curl -sSL \
-            -H "Accept: application/vnd.github.v3.raw" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/ravuthu/da-ue-test/contents/scripts/aem.js?ref=main" \
-            -o scripts/aem.js
+          echo "📥 Downloading files from ravuthu/da-ue-test..."
           
-          echo "Downloaded aem.js successfully"
-          head -5 scripts/aem.js
+          while IFS= read -r mapping; do
+            # Skip empty lines
+            [[ -z "$mapping" ]] && continue
+            
+            # Parse local:remote mapping
+            local_path="${mapping%%:*}"
+            remote_path="${mapping##*:}"
+            
+            echo "  → $remote_path → $local_path"
+            
+            # Ensure target directory exists
+            mkdir -p "$(dirname "$local_path")"
+            
+            # Download file (fail on HTTP errors)
+            curl -sSLf \
+              "https://raw.githubusercontent.com/ravuthu/da-ue-test/main/$remote_path" \
+              -o "$local_path"
+          done <<< "$SYNC_FILES"
+          
+          echo "✅ Download complete"
       
       - name: Check for changes
         id: changes
         run: |
-          if git diff --quiet scripts/aem.js; then
+          if git diff --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No changes detected in aem.js"
+            echo "✅ All files are already up to date"
           else
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Changes detected in aem.js:"
-            git diff --stat scripts/aem.js
+            echo "🔄 Changes detected:"
+            git diff --name-only
           fi
       
       - name: Create Pull Request
         if: steps.changes.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "chore: sync aem.js from ravuthu/da-ue-test"
-          title: "🔄 Sync aem.js from da-ue-test"
+          commit-message: "chore: sync AEM Boilerplate from adobe/aem-boilerplate"
+          title: "🔄 Sync AEM Boilerplate from adobe/aem-boilerplate"
           body: |
-            This PR automatically syncs `scripts/aem.js` from the source repository.
+            This PR automatically syncs files from the upstream [ravuthu/da-ue-test](https://github.com/ravuthu/da-ue-test) repository.
             
-            **Source:** https://github.com/ravuthu/da-ue-test/blob/main/scripts/aem.js
+            **Files synced:**
+            ${{ env.SYNC_FILES }}
+            
+            **Source:** https://github.com/adobe/aem-boilerplate
             
             ---
-            _This PR was created automatically._
-          branch: chore/sync-aem-js
+            _This PR was created automatically by a scheduled sync workflow._
+          branch: chore/sync-aem-boilerplate
           delete-branch: true
+          labels: |
+            automated
+            sync
