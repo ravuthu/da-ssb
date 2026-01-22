@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Adobe. All rights reserved.
+ * Copyright 2025 Adobe. All rights reserved.
  * This file is licensed to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy
  * of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -17,7 +17,7 @@ function sampleRUM(checkpoint, data) {
   try {
     window.hlx = window.hlx || {};
     sampleRUM.enhance = () => {};
-    if (!window.hlx.rum) {
+    if (!window.hlx.rum || !window.hlx.rum.collector) {
       const weight = new URLSearchParams(window.location.search).get('rum') === 'on' ? 1 : 100;
       const id = Math.random().toString(36).slice(-4);
       const isSelected = Math.random() * weight < 1;
